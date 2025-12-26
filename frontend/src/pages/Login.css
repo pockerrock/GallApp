@@ -1,0 +1,91 @@
+/* Full page wrapper centers the form */
+.login-wrapper {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-image: url('/BANNnER.jpg');
+  /* background image is set globally or via parent container */
+}
+
+/* The form container with transparent gray background */
+.login-form-container {
+  background: rgba(128, 128, 128, 0.5); /* semi-transparent gray */
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  padding: 40px 50px;
+  width: 320px;
+  text-align: center;
+}
+
+/* Logo and app name */
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 40px;
+}
+
+.logo-container svg {
+  stroke: white;
+}
+
+.logo-container h1 {
+  color: white;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: 600;
+  font-size: 32px;
+  margin: 0;
+  user-select: none;
+}
+
+/* Inputs */
+.login-input {
+  display: block;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  border-radius: 30px;
+  height: 40px;
+  margin-bottom: 20px;
+  padding: 0 20px;
+  font-size: 16px;
+  color: white;
+  outline: none;
+  transition: background 0.3s ease;
+}
+
+.login-input::placeholder {
+  color: white;
+  opacity: 0.8;
+}
+
+.login-input:focus {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Button */
+.login-button {
+  width: 100%;
+  background: #ff0054; /* bright red */
+  border: none;
+  border-radius: 30px;
+  height: 45px;
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 1.1px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: background 0.3s ease;
+}
+
+.login-button:disabled {
+  background: #ff8fa0;
+  cursor: not-allowed;
+}
+
+.login-button:not(:disabled):hover {
+  background: #e60046;
+}

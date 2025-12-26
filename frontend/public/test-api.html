@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API - GallinaApp</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f3f4f6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 { color: #1f2937; margin-top: 0; }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #1d4ed8; }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+        .info {
+            background: #dbeafe;
+            border: 1px solid #3b82f6;
+            color: #1e40af;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px 0;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐔 GallinaApp - Test de API</h1>
+        <p>Usa esta herramienta para diagnosticar problemas de conexión con el backend.</p>
+
+        <!-- Test 1: Health Check -->
+        <div class="test-section">
+            <h3>Test 1: Health Check</h3>
+            <p>Verifica que el backend esté activo</p>
+            <button onclick="testHealth()">Ejecutar Test</button>
+            <div id="health-result"></div>
+        </div>
+
+        <!-- Test 2: CORS Test -->
+        <div class="test-section">
+            <h3>Test 2: Test de CORS</h3>
+            <p>Verifica si CORS está configurado correctamente</p>
+            <button onclick="testCORS()">Ejecutar Test</button>
+            <div id="cors-result"></div>
+        </div>
+
+        <!-- Test 3: Login Test -->
+        <div class="test-section">
+            <h3>Test 3: Test de Login</h3>
+            <p>Prueba el endpoint de login</p>
+            <label>Email:</label>
+            <input type="email" id="email" value="dueno@elolimp.com">
+            <label>Password:</label>
+            <input type="password" id="password" value="password123">
+            <button onclick="testLogin()">Ejecutar Test</button>
+            <div id="login-result"></div>
+        </div>
+
+        <!-- Test 4: Database Test -->
+        <div class="test-section">
+            <h3>Test 4: Test de Base de Datos</h3>
+            <p>Verifica si el schema está ejecutado</p>
+            <button onclick="testDatabase()">Ejecutar Test</button>
+            <div id="db-result"></div>
+        </div>
+
+        <!-- Info -->
+        <div class="test-section">
+            <h3>📋 Información</h3>
+            <div id="info" class="result info"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://gallinaapp.onrender.com';
+
+        // Mostrar info inicial
+        window.onload = () => {
+            document.getElementById('info').textContent =
+                `API URL: ${API_URL}\n` +
+                `Frontend: ${window.location.origin}\n` +
+                `Navegador: ${navigator.userAgent.split(' ').slice(-2).join(' ')}`;
+        };
+
+        function showResult(elementId, message, type) {
+            const el = document.getElementById(elementId);
+            el.textContent = message;
+            el.className = `result ${type}`;
+        }
+
+        // Test 1: Health Check
+        async function testHealth() {
+            const btn = event.target;
+            btn.disabled = true;
+            showResult('health-result', '⏳ Probando...', 'info');
+
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('health-result',
+                        `✅ Backend está activo!\n\n` +
+                        `Status: ${data.status}\n` +
+                        `Environment: ${data.environment}\n` +
+                        `Uptime: ${Math.floor(data.uptime)}s`,
+                        'success');
+                } else {
+                    showResult('health-result', `❌ Error: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                showResult('health-result',
+                    `❌ Error de conexión:\n${error.message}\n\n` +
+                    `Posibles causas:\n` +
+                    `1. Backend dormido (espera 30-60s)\n` +
+                    `2. URL incorrecta\n` +
+                    `3. Sin internet`,
+                    'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Test 2: CORS Test
+        async function testCORS() {
+            const btn = event.target;
+            btn.disabled = true;
+            showResult('cors-result', '⏳ Probando CORS...', 'info');
+
+            try {
+                const response = await fetch(`${API_URL}/api/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'test@test.com', password: 'test' })
+                });
+
+                // Si llegamos aquí, CORS está OK (aunque las credenciales sean incorrectas)
+                if (response.status === 401) {
+                    showResult('cors-result',
+                        `✅ CORS configurado correctamente!\n\n` +
+                        `El backend respondió con 401 (credenciales incorrectas),\n` +
+                        `lo que significa que CORS está funcionando.`,
+                        'success');
+                } else {
+                    const data = await response.json();
+                    showResult('cors-result',
+                        `⚠️ CORS OK pero respuesta inesperada:\n` +
+                        `Status: ${response.status}\n` +
+                        `Data: ${JSON.stringify(data, null, 2)}`,
+                        'info');
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    showResult('cors-result',
+                        `❌ ERROR DE CORS!\n\n` +
+                        `El backend bloqueó la petición.\n\n` +
+                        `SOLUCIÓN:\n` +
+                        `1. Ve a Render Dashboard\n` +
+                        `2. Tu servicio → Environment\n` +
+                        `3. Edita ALLOWED_ORIGINS:\n` +
+                        `   ${window.location.origin}\n` +
+                        `4. Save Changes\n` +
+                        `5. Espera 1-2 minutos`,
+                        'error');
+                } else {
+                    showResult('cors-result', `❌ Error: ${error.message}`, 'error');
+                }
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Test 3: Login Test
+        async function testLogin() {
+            const btn = event.target;
+            btn.disabled = true;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            showResult('login-result', '⏳ Intentando login...', 'info');
+
+            try {
+                const response = await fetch(`${API_URL}/api/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    showResult('login-result',
+                        `✅ LOGIN EXITOSO!\n\n` +
+                        `Usuario: ${data.usuario.nombre}\n` +
+                        `Email: ${data.usuario.email}\n` +
+                        `Rol: ${data.usuario.rol}\n` +
+                        `Token: ${data.token.substring(0, 30)}...`,
+                        'success');
+                } else {
+                    showResult('login-result',
+                        `❌ Error de login:\n\n` +
+                        `Status: ${response.status}\n` +
+                        `Error: ${data.error}\n\n` +
+                        `${data.error?.includes('Usuario no encontrado') || data.error?.includes('no existe') ?
+                            'SOLUCIÓN: Ejecuta el schema SQL:\n' +
+                            'cd backend && npm run migrate' :
+                            'Verifica email y contraseña'}`,
+                        'error');
+                }
+            } catch (error) {
+                showResult('login-result',
+                    `❌ Error de conexión:\n${error.message}\n\n` +
+                    `Si ves "Failed to fetch", es problema de CORS.\n` +
+                    `Ejecuta Test 2 para más detalles.`,
+                    'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Test 4: Database Test
+        async function testDatabase() {
+            const btn = event.target;
+            btn.disabled = true;
+            showResult('db-result', '⏳ Verificando database...', 'info');
+
+            try {
+                // Intentar login con usuario de prueba
+                const response = await fetch(`${API_URL}/api/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'dueno@elolimp.com',
+                        password: 'password123'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    showResult('db-result',
+                        `✅ Base de datos configurada correctamente!\n\n` +
+                        `Schema ejecutado ✓\n` +
+                        `Datos de prueba cargados ✓\n` +
+                        `Usuario encontrado: ${data.usuario.nombre}`,
+                        'success');
+                } else if (response.status === 401) {
+                    showResult('db-result',
+                        `⚠️ Schema ejecutado pero datos de prueba NO cargados\n\n` +
+                        `El backend responde pero el usuario no existe.\n\n` +
+                        `SOLUCIÓN:\n` +
+                        `psql "postgresql://..." -f database/migrations/seed.sql`,
+                        'error');
+                } else {
+                    showResult('db-result',
+                        `❌ Schema probablemente NO ejecutado\n\n` +
+                        `Error: ${data.error}\n\n` +
+                        `SOLUCIÓN:\n` +
+                        `cd backend\n` +
+                        `npm run migrate`,
+                        'error');
+                }
+            } catch (error) {
+                showResult('db-result',
+                    `❌ No se puede verificar:\n${error.message}\n\n` +
+                    `Ejecuta primero Test 1 y Test 2.`,
+                    'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

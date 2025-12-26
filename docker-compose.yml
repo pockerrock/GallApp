@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: gallina_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-gallinapp}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Initialize DB with schema if it's empty
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
+  backend:
+    build: ./backend
+    container_name: gallina_backend
+    restart: always
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      # Internal network URL for database
+      DB_HOST: postgres
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-gallinapp}
+      DB_PORT: 5432
+      JWT_SECRET: ${JWT_SECRET:-changeme_in_production}
+      ALLOWED_ORIGINS: http://localhost,http://${DOMAIN_NAME:-localhost}
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+
+  frontend:
+    build: ./frontend
+    container_name: gallina_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge
