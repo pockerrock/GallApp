@@ -30,7 +30,7 @@ services:
       DB_NAME: ${DB_NAME:-gallinapp}
       DB_PORT: 5432
       JWT_SECRET: ${JWT_SECRET:-changeme_in_production}
-      ALLOWED_ORIGINS: http://localhost,http://${DOMAIN_NAME:-localhost}
+      ALLOWED_ORIGINS: "*"
     depends_on:
       - postgres
     networks:

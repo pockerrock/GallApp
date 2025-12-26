@@ -47,11 +47,11 @@ app.use(cors({
     // Permitir requests sin origin (como apps móviles o Postman)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'La política CORS no permite el acceso desde este origen.';
-      return callback(new Error(msg), false);
+    if (allowedOrigins.includes('*') || allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
     }
-    return callback(null, true);
+    const msg = 'La política CORS no permite el acceso desde este origen.';
+    return callback(new Error(msg), false);
   },
   credentials: true
 }));
