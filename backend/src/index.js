@@ -35,6 +35,7 @@ const PORT = process.env.PORT || 3000;
 // ============================================
 
 // Seguridad
+app.set('trust proxy', 1); // Trust first proxy (Nginx)
 app.use(helmet());
 
 // CORS
