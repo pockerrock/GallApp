@@ -9,15 +9,13 @@ TRUNCATE TABLE alertas, registros_diarios, inventario_alimento, lotes_alimento, 
 -- GRANJAS
 -- ============================================
 INSERT INTO granjas (nombre, ubicacion) VALUES
-('El Olimpo', 'Vereda La Esperanza, Cundinamarca'),
-
+('El Olimpo', 'Vereda La Esperanza, Cundinamarca');
 -- ============================================
 -- USUARIOS
 -- Contraseña para todos: "password123" (hash bcrypt)
 -- ============================================
 INSERT INTO usuarios (nombre, email, password_hash, rol, granja_id, activo) VALUES
-('Prueba', 'pruebas@elolimpo.com', '$2b$10$3an1hQCJ8DVadswKajtWJeJOjVJWBLipHeY3Y.RZpOztFjDSWVSqm', 'dueno', 1, TRUE),
-
+('Prueba', 'pruebas@elolimpo.com', '$2b$10$3an1hQCJ8DVadswKajtWJeJOjVJWBLipHeY3Y.RZpOztFjDSWVSqm', 'dueno', 1, TRUE);
 
 
 -- ============================================
