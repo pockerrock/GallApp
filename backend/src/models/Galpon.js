@@ -55,6 +55,15 @@ const Galpon = sequelize.define('Galpon', {
     type: DataTypes.DATEONLY,
     allowNull: false
   },
+  // Bodega desde la cual este galpón debe consumir alimento
+  bodega_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'bodegas',
+      key: 'id'
+    }
+  },
   activo: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

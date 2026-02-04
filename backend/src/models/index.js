@@ -11,6 +11,7 @@ const Bodega = require('./Bodega');
 const ConsumoGas = require('./ConsumoGas');
 const Tamo = require('./Tamo');
 const Desacose = require('./Desacose');
+const StockLoteBodega = require('./StockLoteBodega');
 
 // ============================================
 // RELACIONES ENTRE MODELOS
@@ -148,13 +149,67 @@ LoteAlimento.belongsTo(Bodega, {
   as: 'bodega'
 });
 
-// Bodega -> Inventario Alimento (1:N)
+// Bodega -> Inventario Alimento (1:N) (bodega simple)
 Bodega.hasMany(InventarioAlimento, {
   foreignKey: 'bodega_id',
   as: 'movimientos',
   onDelete: 'SET NULL'
 });
 InventarioAlimento.belongsTo(Bodega, {
+  foreignKey: 'bodega_id',
+  as: 'bodega'
+});
+
+// Bodega -> Inventario Alimento (origen/destino para traslados)
+Bodega.hasMany(InventarioAlimento, {
+  foreignKey: 'bodega_origen_id',
+  as: 'movimientos_salida_bodega',
+  onDelete: 'SET NULL'
+});
+InventarioAlimento.belongsTo(Bodega, {
+  foreignKey: 'bodega_origen_id',
+  as: 'bodega_origen'
+});
+
+Bodega.hasMany(InventarioAlimento, {
+  foreignKey: 'bodega_destino_id',
+  as: 'movimientos_entrada_bodega',
+  onDelete: 'SET NULL'
+});
+InventarioAlimento.belongsTo(Bodega, {
+  foreignKey: 'bodega_destino_id',
+  as: 'bodega_destino'
+});
+
+// Lote <-> StockLoteBodega (1:N)
+LoteAlimento.hasMany(StockLoteBodega, {
+  foreignKey: 'lote_id',
+  as: 'stocks',
+  onDelete: 'CASCADE'
+});
+StockLoteBodega.belongsTo(LoteAlimento, {
+  foreignKey: 'lote_id',
+  as: 'lote'
+});
+
+// Bodega <-> StockLoteBodega (1:N)
+Bodega.hasMany(StockLoteBodega, {
+  foreignKey: 'bodega_id',
+  as: 'stocks',
+  onDelete: 'CASCADE'
+});
+StockLoteBodega.belongsTo(Bodega, {
+  foreignKey: 'bodega_id',
+  as: 'bodega'
+});
+
+// Bodega <-> Galpon (1:N) para consumo de alimento
+Bodega.hasMany(Galpon, {
+  foreignKey: 'bodega_id',
+  as: 'galpones',
+  onDelete: 'SET NULL'
+});
+Galpon.belongsTo(Bodega, {
   foreignKey: 'bodega_id',
   as: 'bodega'
 });
@@ -228,5 +283,6 @@ module.exports = {
   Bodega,
   ConsumoGas,
   Tamo,
-  Desacose
+  Desacose,
+  StockLoteBodega
 };

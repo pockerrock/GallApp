@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { galponesService } from '../services/api';
+import { galponesService, bodegasService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { FaEye, FaPlus, FaEdit, FaTimes, FaCut } from 'react-icons/fa';
@@ -17,6 +17,8 @@ const Galpones = () => {
   const [modoEdicion, setModoEdicion] = useState(false);
   const [galponSeleccionado, setGalponSeleccionado] = useState(null);
 
+  const [bodegas, setBodegas] = useState([]);
+
   const [formulario, setFormulario] = useState({
     numero: '',
     nombre: '',
@@ -25,12 +27,23 @@ const Galpones = () => {
     capacidad: '',
     aves_iniciales: '',
     fecha_inicio: new Date().toISOString().split('T')[0],
-    granja_id: 1 // Por defecto granja 1
+    granja_id: 1, // Por defecto granja 1
+    bodega_id: ''
   });
 
   useEffect(() => {
     cargarGalpones();
+    cargarBodegas();
   }, []);
+
+  const cargarBodegas = async () => {
+    try {
+      const res = await bodegasService.listar();
+      setBodegas(res.data.bodegas || []);
+    } catch (error) {
+      console.error('Error al cargar bodegas:', error);
+    }
+  };
 
   const cargarGalpones = async () => {
     try {
@@ -66,7 +79,8 @@ const Galpones = () => {
       capacidad: '',
       aves_iniciales: '',
       fecha_inicio: new Date().toISOString().split('T')[0],
-      granja_id: 1
+      granja_id: 1,
+      bodega_id: ''
     });
     setMostrarModal(true);
   };
@@ -82,7 +96,8 @@ const Galpones = () => {
       capacidad: galpon.capacidad,
       aves_iniciales: galpon.aves_iniciales,
       fecha_inicio: galpon.fecha_inicio.split('T')[0],
-      granja_id: galpon.granja_id || 1
+      granja_id: galpon.granja_id || 1,
+      bodega_id: galpon.bodega_id || ''
     });
     setMostrarModal(true);
   };
@@ -114,7 +129,8 @@ const Galpones = () => {
         capacidad: parseInt(formulario.capacidad),
         aves_iniciales: parseInt(formulario.aves_iniciales),
         granja_id: parseInt(formulario.granja_id),
-        activo: true
+        activo: true,
+        bodega_id: formulario.bodega_id ? parseInt(formulario.bodega_id) : null
       };
 
       if (modoEdicion && galponSeleccionado) {
@@ -194,6 +210,7 @@ const Galpones = () => {
               <th>Capacidad</th>
               <th>Aves Iniciales</th>
               <th>Fecha Inicio</th>
+              <th>Bodega</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -222,6 +239,11 @@ const Galpones = () => {
                   <td>{galpon.capacidad.toLocaleString('es-ES')}</td>
                   <td>{galpon.aves_iniciales.toLocaleString('es-ES')}</td>
                   <td>{new Date(galpon.fecha_inicio).toLocaleDateString('es-ES')}</td>
+                  <td>
+                    {galpon.bodega
+                      ? <span className="badge badge-info">{galpon.bodega.nombre}</span>
+                      : <span style={{ color: '#9ca3af', fontSize: '12px' }}>Sin bodega</span>}
+                  </td>
                   <td>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <Link to={`/galpones/${galpon.id}`} className="btn btn-sm btn-primary">
@@ -360,6 +382,26 @@ const Galpones = () => {
                     onChange={handleChange}
                     required
                   />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Bodega de Consumo</label>
+                  <select
+                    name="bodega_id"
+                    className="form-control"
+                    value={formulario.bodega_id}
+                    onChange={handleChange}
+                  >
+                    <option value="">Sin asignar</option>
+                    {bodegas.map(bodega => (
+                      <option key={bodega.id} value={bodega.id}>
+                        {bodega.nombre} {bodega.ubicacion ? `- ${bodega.ubicacion}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <small className="text-muted">
+                    Esta es la bodega desde la que este galpón consumirá alimento.
+                  </small>
                 </div>
               </div>
 

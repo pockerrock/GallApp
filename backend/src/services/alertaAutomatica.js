@@ -1,4 +1,4 @@
-const { Alerta, Galpon, LoteAlimento, RegistroDiario } = require('../models');
+const { Alerta, Galpon, LoteAlimento, RegistroDiario, StockLoteBodega } = require('../models');
 const { Op } = require('sequelize');
 
 // Thresholds configurables (pueden venir de .env en el futuro)
@@ -90,11 +90,22 @@ const detectarMortalidadAlta = async (galpon_id, registroActual) => {
  */
 const detectarStockBajo = async (lote_id) => {
   try {
-    const lote = await LoteAlimento.findByPk(lote_id);
+    const lote = await LoteAlimento.findByPk(lote_id, {
+      include: [{
+        model: StockLoteBodega,
+        as: 'stocks'
+      }]
+    });
     if (!lote) return null;
 
+    // Calcular stock total real como suma de todas las bodegas
+    const stockTotal = (lote.stocks || []).reduce(
+      (sum, s) => sum + parseFloat(s.cantidad_actual),
+      0
+    );
+
     const porcentajeDisponible = lote.cantidad_inicial > 0
-      ? (lote.cantidad_actual / lote.cantidad_inicial) * 100
+      ? (stockTotal / lote.cantidad_inicial) * 100
       : 0;
 
     // Verificar si ya existe alerta activa
@@ -112,7 +123,7 @@ const detectarStockBajo = async (lote_id) => {
         lote_id,
         tipo: 'stock_bajo',
         severidad: 'alta',
-        mensaje: `Stock crítico en lote ${lote.codigo_lote} (${lote.tipo}): ${lote.cantidad_actual.toFixed(2)} kg restantes (${porcentajeDisponible.toFixed(1)}%). Ordenar reposición urgente.`,
+        mensaje: `Stock crítico en lote ${lote.codigo_lote} (${lote.tipo}): ${stockTotal.toFixed(2)} kg restantes (${porcentajeDisponible.toFixed(1)}%). Ordenar reposición urgente.`,
         atendida: false
       });
     }
@@ -123,13 +134,13 @@ const detectarStockBajo = async (lote_id) => {
         lote_id,
         tipo: 'stock_bajo',
         severidad: 'media',
-        mensaje: `Stock bajo en lote ${lote.codigo_lote} (${lote.tipo}): ${lote.cantidad_actual.toFixed(2)} kg restantes (${porcentajeDisponible.toFixed(1)}%). Considerar reposición.`,
+        mensaje: `Stock bajo en lote ${lote.codigo_lote} (${lote.tipo}): ${stockTotal.toFixed(2)} kg restantes (${porcentajeDisponible.toFixed(1)}%). Considerar reposición.`,
         atendida: false
       });
     }
 
     // Stock agotado
-    if (lote.cantidad_actual <= 0 && !alertaExistente) {
+    if (stockTotal <= 0 && !alertaExistente) {
       return await Alerta.create({
         lote_id,
         tipo: 'stock_bajo',

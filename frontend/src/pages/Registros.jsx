@@ -219,6 +219,9 @@ const Registros = () => {
       formData.append('fecha', formulario.fecha);
       formData.append('edad_dias', edadDias);
       formData.append('consumo_kg', consumoKg);
+      if (formulario.lote_id) {
+        formData.append('lote_id', formulario.lote_id);
+      }
       if (formulario.tipo_alimento) formData.append('tipo_alimento', formulario.tipo_alimento);
       if (formulario.lote_alimento) formData.append('lote_alimento', formulario.lote_alimento);
       formData.append('cantidad_bultos', cantidadBultos);

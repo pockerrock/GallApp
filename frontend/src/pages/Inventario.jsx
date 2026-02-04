@@ -32,7 +32,8 @@ const Inventario = () => {
     cantidad_kg: '',
     proveedor: '',
     fecha_ingreso: new Date().toISOString().split('T')[0],
-    bodega_id: ''
+    bodega_id: '',
+    distribuciones: [] // { bodega_id, cantidad }
   });
 
   // Estado para bodegas
@@ -98,6 +99,35 @@ const Inventario = () => {
     }));
   };
 
+  const handleDistribucionChange = (index, field, value) => {
+    setFormularioLote(prev => {
+      const distribuciones = [...(prev.distribuciones || [])];
+      distribuciones[index] = {
+        ...distribuciones[index],
+        [field]: value
+      };
+      return { ...prev, distribuciones };
+    });
+  };
+
+  const agregarDistribucion = () => {
+    setFormularioLote(prev => ({
+      ...prev,
+      distribuciones: [
+        ...(prev.distribuciones || []),
+        { bodega_id: '', cantidad: '' }
+      ]
+    }));
+  };
+
+  const eliminarDistribucion = (index) => {
+    setFormularioLote(prev => {
+      const distribuciones = [...(prev.distribuciones || [])];
+      distribuciones.splice(index, 1);
+      return { ...prev, distribuciones };
+    });
+  };
+
   const handleSubmitLote = async (e) => {
     e.preventDefault();
 
@@ -124,9 +154,22 @@ const Inventario = () => {
         codigo_lote: formularioLote.codigo_lote.trim(),
         cantidad_inicial: cantidadKg,
         proveedor: formularioLote.proveedor.trim(),
-        fecha_ingreso: formularioLote.fecha_ingreso,
-        bodega_id: formularioLote.bodega_id || null
+        fecha_ingreso: formularioLote.fecha_ingreso
       };
+
+      // Si hay distribuciones definidas, enviarlas
+      const distribucionesValidas = (formularioLote.distribuciones || [])
+        .filter(d => d.bodega_id && d.cantidad);
+
+      if (distribucionesValidas.length > 0) {
+        datos.distribuciones = distribucionesValidas.map(d => ({
+          bodega_id: parseInt(d.bodega_id),
+          cantidad: parseFloat(d.cantidad)
+        }));
+      } else if (formularioLote.bodega_id) {
+        // Caso simple: todo el stock va a una sola bodega
+        datos.bodega_id = parseInt(formularioLote.bodega_id);
+      }
 
       await inventarioService.crearLote(datos);
       toast.success('Lote creado exitosamente');
@@ -139,7 +182,8 @@ const Inventario = () => {
         cantidad_kg: '',
         proveedor: '',
         fecha_ingreso: new Date().toISOString().split('T')[0],
-        bodega_id: ''
+        bodega_id: '',
+        distribuciones: []
       });
 
       // Recargar datos
@@ -269,6 +313,8 @@ const Inventario = () => {
   };
 
   const lotesPorBodega = (bodegaId) => {
+    // La API de lotes ahora devuelve una fila por (lote + bodega),
+    // así que basta con filtrar por bodega_id
     return lotes.filter(l => l.bodega_id === bodegaId);
   };
 
@@ -584,7 +630,7 @@ const Inventario = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Bodega</label>
+                  <label className="form-label">Bodega (rápida)</label>
                   <select
                     name="bodega_id"
                     className="form-control"
@@ -598,6 +644,66 @@ const Inventario = () => {
                       </option>
                     ))}
                   </select>
+                  <small className="text-muted">
+                    Use esta opción si todo el lote se guarda en una sola bodega.
+                  </small>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Distribución por bodegas (opcional)</label>
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+                    Aquí puede repartir la cantidad total del lote entre múltiples bodegas.
+                  </p>
+                  {(formularioLote.distribuciones || []).map((dist, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        marginBottom: '8px',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <select
+                        className="form-control"
+                        style={{ flex: 2 }}
+                        value={dist.bodega_id}
+                        onChange={(e) => handleDistribucionChange(index, 'bodega_id', e.target.value)}
+                      >
+                        <option value="">Seleccione bodega</option>
+                        {bodegas.map(bodega => (
+                          <option key={bodega.id} value={bodega.id}>
+                            {bodega.nombre}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        className="form-control"
+                        style={{ flex: 1 }}
+                        placeholder="Cantidad (kg)"
+                        value={dist.cantidad}
+                        onChange={(e) => handleDistribucionChange(index, 'cantidad', e.target.value)}
+                        min="0"
+                        step="0.01"
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        onClick={() => eliminarDistribucion(index)}
+                      >
+                        <FaTimes />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline"
+                    onClick={agregarDistribucion}
+                  >
+                    <FaPlus style={{ marginRight: '4px' }} />
+                    Agregar bodega
+                  </button>
                 </div>
               </div>
 

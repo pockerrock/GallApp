@@ -1,4 +1,4 @@
-const { RegistroDiario, Galpon, Granja } = require('../models');
+const { RegistroDiario, Galpon, Granja, StockLoteBodega, LoteAlimento, InventarioAlimento, Bodega } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { ejecutarDetecciones } = require('../services/alertaAutomatica');
@@ -194,6 +194,73 @@ const crearRegistro = async (req, res, next) => {
       foto_medidor: files.foto_medidor ? `/uploads/${files.foto_medidor[0].filename}` : null,
       sincronizado: true
     });
+
+    // Si se proporcionó un lote_id y hay consumo_kg, registrar movimiento de consumo
+    if (req.body.lote_id && consumo_kg && parseFloat(consumo_kg) > 0) {
+      const loteIdRegistro = parseInt(req.body.lote_id);
+      if (!isNaN(loteIdRegistro)) {
+        const t = await sequelize.transaction();
+        try {
+          const lote = await LoteAlimento.findByPk(loteIdRegistro, { transaction: t });
+          if (!lote) {
+            await t.rollback();
+            return res.status(404).json({
+              error: 'El lote seleccionado para el registro diario no existe'
+            });
+          }
+
+          if (!galpon.bodega_id) {
+            await t.rollback();
+            return res.status(400).json({
+              error: 'El galpón no tiene una bodega asignada para registrar el consumo de alimento'
+            });
+          }
+
+          let stock = await StockLoteBodega.findOne({
+            where: { lote_id: loteIdRegistro, bodega_id: galpon.bodega_id },
+            transaction: t,
+            lock: t.LOCK.UPDATE
+          });
+
+          if (!stock || parseFloat(stock.cantidad_actual) < parseFloat(consumo_kg)) {
+            await t.rollback();
+            return res.status(400).json({
+              error: 'Stock insuficiente en la bodega asignada para registrar el consumo del galpón'
+            });
+          }
+
+          const nuevoStockBodega = parseFloat(stock.cantidad_actual) - parseFloat(consumo_kg);
+          await stock.update({ cantidad_actual: nuevoStockBodega }, { transaction: t });
+
+          // Recalcular cantidad_actual agregada del lote
+          const stocksLote = await StockLoteBodega.findAll({
+            where: { lote_id: loteIdRegistro },
+            transaction: t
+          });
+          const stockTotal = stocksLote.reduce(
+            (sum, s) => sum + parseFloat(s.cantidad_actual),
+            0
+          );
+          await lote.update({ cantidad_actual: stockTotal }, { transaction: t });
+
+          // Registrar movimiento de inventario tipo "consumo"
+          await InventarioAlimento.create({
+            lote_id: loteIdRegistro,
+            tipo_movimiento: 'consumo',
+            cantidad: parseFloat(consumo_kg),
+            galpon_id,
+            bodega_id: galpon.bodega_id,
+            fecha,
+            observaciones: observaciones || `Consumo registrado desde el registro diario ID ${nuevoRegistro.id}`
+          }, { transaction: t });
+
+          await t.commit();
+        } catch (e) {
+          await t.rollback();
+          throw e;
+        }
+      }
+    }
 
     const registroConGalpon = await RegistroDiario.findByPk(nuevoRegistro.id, {
       include: [{

@@ -119,29 +119,29 @@ const ComparacionGalpones = () => {
         'Authorization': `Bearer ${token}`
       }
     })
-    .then(response => response.blob())
-    .then(blob => {
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'comparacion-galpones.pdf';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success('Reporte PDF descargado');
-    })
-    .catch(error => {
-      console.error('Error al descargar PDF:', error);
-      toast.error('Error al descargar el reporte PDF');
-    });
+      .then(response => response.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'comparacion-galpones.pdf';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('Reporte PDF descargado');
+      })
+      .catch(error => {
+        console.error('Error al descargar PDF:', error);
+        toast.error('Error al descargar el reporte PDF');
+      });
   };
 
   if (cargando) {
     return <div className="page"><div className="loading"><div className="spinner"></div></div></div>;
   }
 
-  if (!datos || datos.comparacion.length === 0) {
+  if (!datos || !datos.comparacion || datos.comparacion.length === 0) {
     return (
       <div className="page">
         <div className="page-header">
@@ -166,17 +166,17 @@ const ComparacionGalpones = () => {
   const mejorConversion = datos.comparacion.reduce((mejor, actual) =>
     parseFloat(actual.metricas.conversion) > 0 && (mejor === null || parseFloat(actual.metricas.conversion) < parseFloat(mejor.metricas.conversion))
       ? actual : mejor
-  , null);
+    , null);
 
   const menorMortalidad = datos.comparacion.reduce((mejor, actual) =>
     mejor === null || actual.metricas.porcentaje_mortalidad < mejor.metricas.porcentaje_mortalidad
       ? actual : mejor
-  , null);
+    , null);
 
   const mayorPeso = datos.comparacion.reduce((mejor, actual) =>
     mejor === null || parseFloat(actual.metricas.peso_promedio_g) > parseFloat(mejor.metricas.peso_promedio_g)
       ? actual : mejor
-  , null);
+    , null);
 
   return (
     <div className="page">
@@ -235,212 +235,209 @@ const ComparacionGalpones = () => {
       {tabActiva === 'general' && (
         <div>
 
-      {/* Tarjetas de Mejores Galpones */}
-      <div className="grid grid-3" style={{ marginBottom: '24px' }}>
-        {mejorConversion && (
-          <div className="card" style={{ borderLeft: '4px solid #16a34a' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <FaTrophy style={{ fontSize: '32px', color: '#16a34a' }} />
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontSize: '13px', color: '#78716c' }}>Mejor Conversion</p>
-                <h3 style={{ margin: '4px 0', fontSize: '20px' }}>Galpón {mejorConversion.galpon.numero}</h3>
-                <p style={{ margin: 0, fontSize: '14px', color: '#15803d', fontWeight: '600' }}>
-                  Conversion: {mejorConversion.metricas.conversion}
-                </p>
+          {/* Tarjetas de Mejores Galpones */}
+          <div className="grid grid-3" style={{ marginBottom: '24px' }}>
+            {mejorConversion && (
+              <div className="card" style={{ borderLeft: '4px solid #16a34a' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <FaTrophy style={{ fontSize: '32px', color: '#16a34a' }} />
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#78716c' }}>Mejor Conversion</p>
+                    <h3 style={{ margin: '4px 0', fontSize: '20px' }}>Galpón {mejorConversion.galpon.numero}</h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#15803d', fontWeight: '600' }}>
+                      Conversion: {mejorConversion.metricas.conversion}
+                    </p>
+                  </div>
+                </div>
               </div>
+            )}
+
+            {menorMortalidad && (
+              <div className="card" style={{ borderLeft: '4px solid #f59e0b' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <FaSkullCrossbones style={{ fontSize: '32px', color: '#f59e0b' }} />
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#78716c' }}>Menor Mortalidad</p>
+                    <h3 style={{ margin: '4px 0', fontSize: '20px' }}>Galpón {menorMortalidad.galpon.numero}</h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#d97706', fontWeight: '600' }}>
+                      {menorMortalidad.metricas.porcentaje_mortalidad}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {mayorPeso && (
+              <div className="card" style={{ borderLeft: '4px solid #15803d' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <FaWeight style={{ fontSize: '32px', color: '#15803d' }} />
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#78716c' }}>Mayor Peso Promedio</p>
+                    <h3 style={{ margin: '4px 0', fontSize: '20px' }}>Galpón {mayorPeso.galpon.numero}</h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#15803d', fontWeight: '600' }}>
+                      {mayorPeso.metricas.peso_promedio_g} g
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Selector de Métrica */}
+          <div className="card mb-2">
+            <label className="form-label">Seleccionar Métrica para Comparar:</label>
+            <select
+              className="form-control"
+              value={metricaSeleccionada}
+              onChange={(e) => setMetricaSeleccionada(e.target.value)}
+            >
+              <option value="mortalidad">Porcentaje de Mortalidad</option>
+              <option value="supervivencia">Tasa de Supervivencia</option>
+              <option value="conversion">Conversion (Conversión Alimenticia)</option>
+              <option value="peso">Peso Promedio (g)</option>
+              <option value="consumo">Consumo Total (kg)</option>
+            </select>
+          </div>
+
+          {/* Gráfica de Barras */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">
+                Comparación: {
+                  metricaSeleccionada === 'mortalidad' ? 'Porcentaje de Mortalidad' :
+                    metricaSeleccionada === 'supervivencia' ? 'Tasa de Supervivencia' :
+                      metricaSeleccionada === 'conversion' ? 'Conversion (Conversión Alimenticia)' :
+                        metricaSeleccionada === 'peso' ? 'Peso Promedio' :
+                          'Consumo Total de Alimento'
+                }
+              </h3>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={datosGrafica}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="nombre" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar
+                  dataKey={metricaSeleccionada}
+                  fill={
+                    metricaSeleccionada === 'mortalidad' ? '#dc2626' :
+                      metricaSeleccionada === 'conversion' ? '#15803d' :
+                        metricaSeleccionada === 'peso' ? '#f59e0b' :
+                          '#16a34a'
+                  }
+                  name={
+                    metricaSeleccionada === 'mortalidad' ? 'Mortalidad (%)' :
+                      metricaSeleccionada === 'supervivencia' ? 'Supervivencia (%)' :
+                        metricaSeleccionada === 'conversion' ? 'Conversion' :
+                          metricaSeleccionada === 'peso' ? 'Peso (g)' :
+                            'Consumo (kg)'
+                  }
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Tabla Detallada */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">Tabla Comparativa Detallada</h3>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Galpón</th>
+                    <th>Lote</th>
+                    <th>Edad (días)</th>
+                    <th>Aves Actuales</th>
+                    <th>Mortalidad %</th>
+                    <th>Supervivencia %</th>
+                    <th>Peso Prom. (g)</th>
+                    <th>Conversion</th>
+                    <th>Eficiencia</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {datos.comparacion.map((item) => (
+                    <tr key={item.galpon.id}>
+                      <td><strong>Galpón {item.galpon.numero}</strong></td>
+                      <td><span className="badge badge-info">{item.galpon.lote}</span></td>
+                      <td>{item.metricas.edad_actual_dias}</td>
+                      <td>{item.metricas.saldo_actual.toLocaleString('es-ES')}</td>
+                      <td>
+                        <span className={`badge ${item.metricas.porcentaje_mortalidad < 3 ? 'badge-success' :
+                            item.metricas.porcentaje_mortalidad < 5 ? 'badge-warning' :
+                              'badge-danger'
+                          }`}>
+                          {item.metricas.porcentaje_mortalidad}%
+                        </span>
+                      </td>
+                      <td>
+                        <span className="badge badge-success">
+                          {item.metricas.tasa_supervivencia}%
+                        </span>
+                      </td>
+                      <td>{item.metricas.peso_promedio_g} g</td>
+                      <td>
+                        <span className={`badge ${item.metricas.conversion <= 2.5 ? 'badge-success' :
+                            item.metricas.conversion <= 3.0 ? 'badge-warning' :
+                              'badge-danger'
+                          }`}>
+                          {item.metricas.conversion}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge ${item.metricas.eficiencia === 'Excelente' ? 'badge-success' :
+                            item.metricas.eficiencia === 'Buena' ? 'badge-info' :
+                              item.metricas.eficiencia === 'Regular' ? 'badge-warning' :
+                                'badge-danger'
+                          }`}>
+                          {item.metricas.eficiencia}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        )}
 
-        {menorMortalidad && (
-          <div className="card" style={{ borderLeft: '4px solid #f59e0b' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <FaSkullCrossbones style={{ fontSize: '32px', color: '#f59e0b' }} />
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontSize: '13px', color: '#78716c' }}>Menor Mortalidad</p>
-                <h3 style={{ margin: '4px 0', fontSize: '20px' }}>Galpón {menorMortalidad.galpon.numero}</h3>
-                <p style={{ margin: 0, fontSize: '14px', color: '#d97706', fontWeight: '600' }}>
-                  {menorMortalidad.metricas.porcentaje_mortalidad}%
-                </p>
+          {/* Resumen de Consumo */}
+          <div className="grid grid-2">
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">Consumo de Alimento por Galpón</h3>
               </div>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={datosGrafica}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="nombre" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="consumo" fill="#f59e0b" name="Consumo Total (kg)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">Conversion por Galpón</h3>
+              </div>
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={datosGrafica}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="nombre" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="conversion" stroke="#15803d" strokeWidth={2} name="Conversion" />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
-        )}
-
-        {mayorPeso && (
-          <div className="card" style={{ borderLeft: '4px solid #15803d' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <FaWeight style={{ fontSize: '32px', color: '#15803d' }} />
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontSize: '13px', color: '#78716c' }}>Mayor Peso Promedio</p>
-                <h3 style={{ margin: '4px 0', fontSize: '20px' }}>Galpón {mayorPeso.galpon.numero}</h3>
-                <p style={{ margin: 0, fontSize: '14px', color: '#15803d', fontWeight: '600' }}>
-                  {mayorPeso.metricas.peso_promedio_g} g
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Selector de Métrica */}
-      <div className="card mb-2">
-        <label className="form-label">Seleccionar Métrica para Comparar:</label>
-        <select
-          className="form-control"
-          value={metricaSeleccionada}
-          onChange={(e) => setMetricaSeleccionada(e.target.value)}
-        >
-          <option value="mortalidad">Porcentaje de Mortalidad</option>
-          <option value="supervivencia">Tasa de Supervivencia</option>
-          <option value="conversion">Conversion (Conversión Alimenticia)</option>
-          <option value="peso">Peso Promedio (g)</option>
-          <option value="consumo">Consumo Total (kg)</option>
-        </select>
-      </div>
-
-      {/* Gráfica de Barras */}
-      <div className="card">
-        <div className="card-header">
-          <h3 className="card-title">
-            Comparación: {
-              metricaSeleccionada === 'mortalidad' ? 'Porcentaje de Mortalidad' :
-              metricaSeleccionada === 'supervivencia' ? 'Tasa de Supervivencia' :
-              metricaSeleccionada === 'conversion' ? 'Conversion (Conversión Alimenticia)' :
-              metricaSeleccionada === 'peso' ? 'Peso Promedio' :
-              'Consumo Total de Alimento'
-            }
-          </h3>
-        </div>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={datosGrafica}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="nombre" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar
-              dataKey={metricaSeleccionada}
-              fill={
-                metricaSeleccionada === 'mortalidad' ? '#dc2626' :
-                metricaSeleccionada === 'conversion' ? '#15803d' :
-                metricaSeleccionada === 'peso' ? '#f59e0b' :
-                '#16a34a'
-              }
-              name={
-                metricaSeleccionada === 'mortalidad' ? 'Mortalidad (%)' :
-                metricaSeleccionada === 'supervivencia' ? 'Supervivencia (%)' :
-                metricaSeleccionada === 'conversion' ? 'Conversion' :
-                metricaSeleccionada === 'peso' ? 'Peso (g)' :
-                'Consumo (kg)'
-              }
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Tabla Detallada */}
-      <div className="card">
-        <div className="card-header">
-          <h3 className="card-title">Tabla Comparativa Detallada</h3>
-        </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Galpón</th>
-                <th>Lote</th>
-                <th>Edad (días)</th>
-                <th>Aves Actuales</th>
-                <th>Mortalidad %</th>
-                <th>Supervivencia %</th>
-                <th>Peso Prom. (g)</th>
-                <th>Conversion</th>
-                <th>Eficiencia</th>
-              </tr>
-            </thead>
-            <tbody>
-              {datos.comparacion.map((item) => (
-                <tr key={item.galpon.id}>
-                  <td><strong>Galpón {item.galpon.numero}</strong></td>
-                  <td><span className="badge badge-info">{item.galpon.lote}</span></td>
-                  <td>{item.metricas.edad_actual_dias}</td>
-                  <td>{item.metricas.saldo_actual.toLocaleString('es-ES')}</td>
-                  <td>
-                    <span className={`badge ${
-                      item.metricas.porcentaje_mortalidad < 3 ? 'badge-success' :
-                      item.metricas.porcentaje_mortalidad < 5 ? 'badge-warning' :
-                      'badge-danger'
-                    }`}>
-                      {item.metricas.porcentaje_mortalidad}%
-                    </span>
-                  </td>
-                  <td>
-                    <span className="badge badge-success">
-                      {item.metricas.tasa_supervivencia}%
-                    </span>
-                  </td>
-                  <td>{item.metricas.peso_promedio_g} g</td>
-                  <td>
-                    <span className={`badge ${
-                      item.metricas.conversion <= 2.5 ? 'badge-success' :
-                      item.metricas.conversion <= 3.0 ? 'badge-warning' :
-                      'badge-danger'
-                    }`}>
-                      {item.metricas.conversion}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`badge ${
-                      item.metricas.eficiencia === 'Excelente' ? 'badge-success' :
-                      item.metricas.eficiencia === 'Buena' ? 'badge-info' :
-                      item.metricas.eficiencia === 'Regular' ? 'badge-warning' :
-                      'badge-danger'
-                    }`}>
-                      {item.metricas.eficiencia}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Resumen de Consumo */}
-      <div className="grid grid-2">
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Consumo de Alimento por Galpón</h3>
-          </div>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={datosGrafica}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="nombre" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="consumo" fill="#f59e0b" name="Consumo Total (kg)" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Conversion por Galpón</h3>
-          </div>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={datosGrafica}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="nombre" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="conversion" stroke="#15803d" strokeWidth={2} name="Conversion" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
         </div>
       )}
 
@@ -722,11 +719,10 @@ const ComparacionGalpones = () => {
                       <h4 style={{ margin: '0', fontSize: '20px' }}>
                         {comparacionPersonalizada.comparacion_1.metricas.conversion}
                       </h4>
-                      <span className={`badge ${
-                        comparacionPersonalizada.comparacion_1.metricas.conversion <= 2.5 ? 'badge-success' :
-                        comparacionPersonalizada.comparacion_1.metricas.conversion <= 3.0 ? 'badge-warning' :
-                        'badge-danger'
-                      }`} style={{ fontSize: '11px', marginTop: '4px' }}>
+                      <span className={`badge ${comparacionPersonalizada.comparacion_1.metricas.conversion <= 2.5 ? 'badge-success' :
+                          comparacionPersonalizada.comparacion_1.metricas.conversion <= 3.0 ? 'badge-warning' :
+                            'badge-danger'
+                        }`} style={{ fontSize: '11px', marginTop: '4px' }}>
                         {comparacionPersonalizada.comparacion_1.metricas.eficiencia}
                       </span>
                     </div>
@@ -868,3 +864,4 @@ const ComparacionGalpones = () => {
 };
 
 export default ComparacionGalpones;
+
