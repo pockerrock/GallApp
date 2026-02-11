@@ -42,9 +42,12 @@ const Inventario = () => {
   // Formulario Movimiento
   const [formularioMovimiento, setFormularioMovimiento] = useState({
     lote_id: '',
-    tipo_movimiento: 'entrada',
+    tipo_movimiento: 'consumo',
     cantidad_kg: '',
-    descripcion: ''
+    descripcion: '',
+    bodega_id: '',
+    bodega_origen_id: '',
+    bodega_destino_id: ''
   });
 
   // Estado para lotes disponibles
@@ -235,6 +238,11 @@ const Inventario = () => {
         observaciones: formularioMovimiento.descripcion || ''
       };
 
+      // Agregar campos de bodega según tipo
+      if (formularioMovimiento.bodega_id) datos.bodega_id = parseInt(formularioMovimiento.bodega_id);
+      if (formularioMovimiento.bodega_origen_id) datos.bodega_origen_id = parseInt(formularioMovimiento.bodega_origen_id);
+      if (formularioMovimiento.bodega_destino_id) datos.bodega_destino_id = parseInt(formularioMovimiento.bodega_destino_id);
+
       await inventarioService.registrarMovimiento(datos);
       toast.success('Movimiento registrado exitosamente');
       setMostrarModalMovimiento(false);
@@ -242,9 +250,12 @@ const Inventario = () => {
       // Resetear formulario
       setFormularioMovimiento({
         lote_id: '',
-        tipo_movimiento: 'entrada',
+        tipo_movimiento: 'consumo',
         cantidad_kg: '',
-        descripcion: ''
+        descripcion: '',
+        bodega_id: '',
+        bodega_origen_id: '',
+        bodega_destino_id: ''
       });
 
       // Recargar inventario
@@ -770,9 +781,75 @@ const Inventario = () => {
                     required
                   >
                     <option value="entrada">Entrada (Agregar stock)</option>
-                    <option value="salida">Salida (Usar alimento)</option>
+                    <option value="consumo">Consumo (Usar alimento)</option>
+                    <option value="traslado">Traslado (Mover entre bodegas)</option>
+                    <option value="ajuste">Ajuste (Corrección inventario)</option>
                   </select>
                 </div>
+
+                {/* Selectores de Bodega condicionales */}
+                {(formularioMovimiento.tipo_movimiento === 'entrada' ||
+                  formularioMovimiento.tipo_movimiento === 'ajuste' ||
+                  formularioMovimiento.tipo_movimiento === 'consumo') && (
+                    <div className="form-group">
+                      <label className="form-label">
+                        {formularioMovimiento.tipo_movimiento === 'consumo' ? 'Bodega (Opcional si tiene Galpón)' : 'Bodega *'}
+                      </label>
+                      <select
+                        name="bodega_id"
+                        className="form-control"
+                        value={formularioMovimiento.bodega_id}
+                        onChange={handleChangeMovimiento}
+                        required={formularioMovimiento.tipo_movimiento !== 'consumo'}
+                      >
+                        <option value="">Seleccione una bodega</option>
+                        {bodegas.map(bodega => (
+                          <option key={bodega.id} value={bodega.id}>
+                            {bodega.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                {formularioMovimiento.tipo_movimiento === 'traslado' && (
+                  <div className="flex gap-2">
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">Bodega Origen *</label>
+                      <select
+                        name="bodega_origen_id"
+                        className="form-control"
+                        value={formularioMovimiento.bodega_origen_id}
+                        onChange={handleChangeMovimiento}
+                        required
+                      >
+                        <option value="">Origen</option>
+                        {bodegas.map(bodega => (
+                          <option key={bodega.id} value={bodega.id}>
+                            {bodega.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">Bodega Destino *</label>
+                      <select
+                        name="bodega_destino_id"
+                        className="form-control"
+                        value={formularioMovimiento.bodega_destino_id}
+                        onChange={handleChangeMovimiento}
+                        required
+                      >
+                        <option value="">Destino</option>
+                        {bodegas.map(bodega => (
+                          <option key={bodega.id} value={bodega.id}>
+                            {bodega.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
 
                 <div className="form-group">
                   <label className="form-label">Cantidad (kg) *</label>

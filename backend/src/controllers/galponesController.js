@@ -1,4 +1,4 @@
-const { Galpon, Granja, RegistroDiario } = require('../models');
+const { Galpon, Granja, RegistroDiario, Bodega } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 
@@ -31,6 +31,11 @@ const listarGalpones = async (req, res, next) => {
           attributes: ['id', 'nombre', 'ubicacion']
         },
         {
+          model: Bodega,
+          as: 'bodega',
+          attributes: ['id', 'nombre']
+        },
+        {
           model: Galpon,
           as: 'divisiones',
           attributes: ['id', 'numero', 'division_sufijo']
@@ -54,11 +59,18 @@ const obtenerGalpon = async (req, res, next) => {
     const { id } = req.params;
 
     const galpon = await Galpon.findByPk(id, {
-      include: [{
-        model: Granja,
-        as: 'granja',
-        attributes: ['id', 'nombre', 'ubicacion']
-      }]
+      include: [
+        {
+          model: Granja,
+          as: 'granja',
+          attributes: ['id', 'nombre', 'ubicacion']
+        },
+        {
+          model: Bodega,
+          as: 'bodega',
+          attributes: ['id', 'nombre']
+        }
+      ]
     });
 
     if (!galpon) {
@@ -169,7 +181,8 @@ const crearGalpon = async (req, res, next) => {
       lote,
       capacidad,
       aves_iniciales,
-      fecha_inicio
+      fecha_inicio,
+      bodega_id
     } = req.body;
 
     // Validar campos requeridos
@@ -208,11 +221,15 @@ const crearGalpon = async (req, res, next) => {
       capacidad,
       aves_iniciales,
       fecha_inicio,
-      activo: true
+      activo: true,
+      bodega_id: bodega_id || null
     });
 
     const galponConGranja = await Galpon.findByPk(nuevoGalpon.id, {
-      include: [{ model: Granja, as: 'granja' }]
+      include: [
+        { model: Granja, as: 'granja' },
+        { model: Bodega, as: 'bodega' }
+      ]
     });
 
     res.status(201).json({
@@ -236,7 +253,8 @@ const actualizarGalpon = async (req, res, next) => {
       capacidad,
       aves_iniciales,
       fecha_inicio,
-      activo
+      activo,
+      bodega_id
     } = req.body;
 
     const galpon = await Galpon.findByPk(id);
@@ -273,11 +291,15 @@ const actualizarGalpon = async (req, res, next) => {
       ...(capacidad && { capacidad }),
       ...(aves_iniciales && { aves_iniciales }),
       ...(fecha_inicio && { fecha_inicio }),
-      ...(activo !== undefined && { activo })
+      ...(activo !== undefined && { activo }),
+      ...(bodega_id !== undefined && { bodega_id: bodega_id || null })
     });
 
     const galponActualizado = await Galpon.findByPk(id, {
-      include: [{ model: Granja, as: 'granja' }]
+      include: [
+        { model: Granja, as: 'granja' },
+        { model: Bodega, as: 'bodega' }
+      ]
     });
 
     res.json({

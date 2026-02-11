@@ -216,7 +216,7 @@ const crearLote = async (req, res, next) => {
         await StockLoteBodega.create({
           lote_id: nuevoLote.id,
           bodega_id,
-          cantidad_actual
+          cantidad_actual: cantidad_inicial
         }, { transaction: t });
       }
 

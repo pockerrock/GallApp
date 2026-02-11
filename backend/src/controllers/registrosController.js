@@ -1,4 +1,4 @@
-const { RegistroDiario, Galpon, Granja, StockLoteBodega, LoteAlimento, InventarioAlimento, Bodega } = require('../models');
+const { RegistroDiario, Galpon, Granja, StockLoteBodega, LoteAlimento, InventarioAlimento, Bodega, ConsumoGas } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { ejecutarDetecciones } = require('../services/alertaAutomatica');
@@ -99,9 +99,13 @@ const crearRegistro = async (req, res, next) => {
     } = req.body;
 
     // Validar campos requeridos
+    console.log('Crear Registro Body:', req.body);
+    console.log('Crear Registro Files:', req.files);
+
     if (!galpon_id || !fecha || !edad_dias || consumo_kg === undefined) {
+      console.error('Error Validacion Campos:', { galpon_id, fecha, edad_dias, consumo_kg });
       return res.status(400).json({
-        error: 'Campos requeridos: galpon_id, fecha, edad_dias, consumo_kg'
+        error: `Campos requeridos faltantes. Recibido: Galpon=${galpon_id}, Fecha=${fecha}, Edad=${edad_dias}, Consumo=${consumo_kg}`
       });
     }
 
@@ -156,11 +160,18 @@ const crearRegistro = async (req, res, next) => {
         // Restar la mortalidad del día anterior para obtener el saldo actual
         saldoAvesCalculado = registroAnterior.saldo_aves - (mortalidad || 0);
       } else {
-        // Si es el primer registro, usar la capacidad del galpón o un valor por defecto
-        saldoAvesCalculado = galpon.capacidad_maxima || 0;
+        // Si es el primer registro, usar la cantidad inicial de aves del galpón
+        saldoAvesCalculado = galpon.aves_iniciales || 0;
         // Si hay mortalidad, restarla
         saldoAvesCalculado = saldoAvesCalculado - (mortalidad || 0);
       }
+    }
+
+    // Validar que el saldo de aves no sea negativo
+    if (saldoAvesCalculado < 0) {
+      return res.status(400).json({
+        error: `El saldo de aves no puede ser negativo (${saldoAvesCalculado}). Verifique la mortalidad ingresada o el saldo actual del galpón.`
+      });
     }
 
     // Si no se proporciona acumulado, calcularlo
@@ -194,6 +205,23 @@ const crearRegistro = async (req, res, next) => {
       foto_medidor: files.foto_medidor ? `/uploads/${files.foto_medidor[0].filename}` : null,
       sincronizado: true
     });
+
+    // Auto-crear registro de consumo de gas si es día 1 y hay foto
+    if (parseInt(edad_dias) === 1 && files.foto_factura) {
+      try {
+        await ConsumoGas.create({
+          galpon_id,
+          fecha,
+          edad_dias: 1,
+          imagen_url: `/uploads/${files.foto_factura[0].filename}`,
+          observaciones: 'Registro automático desde inicio de lote (Registro Diario)'
+        });
+        console.log('Registro de gas creado automáticamente');
+      } catch (errorGas) {
+        console.error('Error al crear registro automático de gas:', errorGas);
+        // No fallamos el request principal si falla esto, pero lo logueamos
+      }
+    }
 
     // Si se proporcionó un lote_id y hay consumo_kg, registrar movimiento de consumo
     if (req.body.lote_id && consumo_kg && parseFloat(consumo_kg) > 0) {

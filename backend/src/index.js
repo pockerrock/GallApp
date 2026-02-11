@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -36,7 +37,12 @@ const PORT = process.env.PORT || 3000;
 
 // Seguridad
 app.set('trust proxy', 1); // Trust first proxy (Nginx)
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// Servir archivos estáticos (imágenes de facturas, etc.)
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
 // CORS
 const allowedOrigins = process.env.ALLOWED_ORIGINS

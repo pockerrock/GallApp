@@ -14,6 +14,8 @@ const Registros = () => {
   const [pasoActual, setPasoActual] = useState(0);
   const [errorValidacion, setErrorValidacion] = useState('');
   const [valorTemporal, setValorTemporal] = useState('');
+  const [imagenSeleccionada, setImagenSeleccionada] = useState(null);
+  const [mostrarModalImagen, setMostrarModalImagen] = useState(false);
 
   const [formulario, setFormulario] = useState({
     galpon_id: '',
@@ -26,7 +28,6 @@ const Registros = () => {
     cantidad_bultos: 0,
     mortalidad: 0,
     seleccion: 0,
-    peso_promedio: '',
     peso_promedio: '',
     observaciones: '',
     foto_factura: null,
@@ -72,7 +73,6 @@ const Registros = () => {
     { nombre: 'mortalidad', label: 'Mortalidad', tipo: 'number', min: 0, requerido: false },
     { nombre: 'seleccion', label: 'Selección / Descarte', tipo: 'number', min: 0, requerido: false },
     { nombre: 'peso_promedio', label: 'Peso Promedio (gramos)', tipo: 'number', min: 0, step: 0.1, requerido: false },
-    { nombre: 'peso_promedio', label: 'Peso Promedio (gramos)', tipo: 'number', min: 0, step: 0.1, requerido: false },
     { nombre: 'observaciones', label: 'Observaciones', tipo: 'textarea', requerido: false },
     { nombre: 'fotos', label: 'Fotos Requeridas', tipo: 'files', requerido: false }
   ];
@@ -115,6 +115,7 @@ const Registros = () => {
 
   const avanzarPaso = () => {
     const pasoConfig = pasos[pasoActual];
+    // Usar valorTemporal si existe, sino el valor del formulario
     const valorActual = valorTemporal !== '' ? valorTemporal : formulario[pasoConfig.nombre];
 
     const error = validarPaso(pasoActual, valorActual);
@@ -124,39 +125,38 @@ const Registros = () => {
       return;
     }
 
-    // Si es lote_id y tiene valor, auto-completar tipo y lote
+    // Calcular el nuevo estado del formulario
+    let nuevoFormulario = { ...formulario, [pasoConfig.nombre]: valorActual };
+
+    // Lógica de auto-completado para lote_id
     if (pasoConfig.nombre === 'lote_id' && valorActual) {
       const loteSeleccionado = lotes.find(l => l.id === parseInt(valorActual));
       if (loteSeleccionado) {
-        setFormulario(prev => ({
-          ...prev,
-          [pasoConfig.nombre]: valorActual,
+        nuevoFormulario = {
+          ...nuevoFormulario,
           tipo_alimento: loteSeleccionado.tipo,
           lote_alimento: loteSeleccionado.codigo_lote
-        }));
-      } else {
-        setFormulario(prev => ({
-          ...prev,
-          [pasoConfig.nombre]: valorActual
-        }));
+        };
       }
-    } else {
-      setFormulario(prev => ({
-        ...prev,
-        [pasoConfig.nombre]: valorActual
-      }));
     }
 
+    // Actualizar estado
+    setFormulario(nuevoFormulario);
     setErrorValidacion('');
     setValorTemporal('');
 
     if (pasoActual < pasos.length - 1) {
-      setPasoActual(pasoActual + 1);
-      // Pre-cargar valor temporal con el valor guardado
-      setValorTemporal(formulario[pasos[pasoActual + 1].nombre] || '');
+      const siguientePaso = pasoActual + 1;
+      setPasoActual(siguientePaso);
+
+      // Pre-cargar valor temporal del siguiente paso
+      // IMPORTANTE: Usar nuevoFormulario para obtener el valor, ya que setFormulario es asíncrono
+      const nombreSiguienteCampo = pasos[siguientePaso].nombre;
+      setValorTemporal(nuevoFormulario[nombreSiguienteCampo] || '');
     } else {
       // Último paso, enviar formulario
-      enviarFormulario();
+      // Asegurarnos de enviar con el estado más reciente
+      enviarFormulario(nuevoFormulario);
     }
   };
 
@@ -182,18 +182,21 @@ const Registros = () => {
     setValorTemporal('');
   };
 
-  const enviarFormulario = async () => {
+  const enviarFormulario = async (datosExtra = null) => {
     setGuardando(true);
+
+    // Usar datosExtra si vienen, o el estado actual
+    const datosFinales = datosExtra || formulario;
 
     try {
       // Parsear y validar datos
-      const galponId = parseInt(formulario.galpon_id);
-      const edadDias = parseInt(formulario.edad_dias);
-      const consumoKg = parseFloat(formulario.consumo_kg);
-      const cantidadBultos = parseInt(formulario.cantidad_bultos || 0);
-      const mortalidad = parseInt(formulario.mortalidad || 0);
-      const seleccion = parseInt(formulario.seleccion || 0);
-      const pesoPromedio = formulario.peso_promedio ? parseFloat(formulario.peso_promedio) : null;
+      const galponId = parseInt(datosFinales.galpon_id);
+      const edadDias = parseInt(datosFinales.edad_dias);
+      const consumoKg = parseFloat(datosFinales.consumo_kg);
+      const cantidadBultos = parseInt(datosFinales.cantidad_bultos || 0);
+      const mortalidad = parseInt(datosFinales.mortalidad || 0);
+      const seleccion = parseInt(datosFinales.seleccion || 0);
+      const pesoPromedio = datosFinales.peso_promedio ? parseFloat(datosFinales.peso_promedio) : null;
 
       // Validaciones de lógica de negocio
       if (isNaN(galponId) || galponId <= 0) {
@@ -216,19 +219,19 @@ const Registros = () => {
 
       const formData = new FormData();
       formData.append('galpon_id', galponId);
-      formData.append('fecha', formulario.fecha);
+      formData.append('fecha', datosFinales.fecha);
       formData.append('edad_dias', edadDias);
       formData.append('consumo_kg', consumoKg);
-      if (formulario.lote_id) {
-        formData.append('lote_id', formulario.lote_id);
+      if (datosFinales.lote_id) {
+        formData.append('lote_id', datosFinales.lote_id);
       }
-      if (formulario.tipo_alimento) formData.append('tipo_alimento', formulario.tipo_alimento);
-      if (formulario.lote_alimento) formData.append('lote_alimento', formulario.lote_alimento);
+      if (datosFinales.tipo_alimento) formData.append('tipo_alimento', datosFinales.tipo_alimento);
+      if (datosFinales.lote_alimento) formData.append('lote_alimento', datosFinales.lote_alimento);
       formData.append('cantidad_bultos', cantidadBultos);
       formData.append('mortalidad', mortalidad);
       formData.append('seleccion', seleccion);
       if (pesoPromedio) formData.append('peso_promedio', pesoPromedio);
-      formData.append('observaciones', formulario.observaciones || '');
+      formData.append('observaciones', datosFinales.observaciones || '');
 
       if (parseInt(edadDias) === 1 && archivos.foto_factura) {
         formData.append('foto_factura', archivos.foto_factura);
@@ -402,6 +405,7 @@ const Registros = () => {
               <th>Selección</th>
               <th>Saldo Aves</th>
               <th>Peso (g)</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -428,12 +432,49 @@ const Registros = () => {
                   <td>{registro.seleccion || 0}</td>
                   <td>{registro.saldo_aves?.toLocaleString('es-ES') || 0}</td>
                   <td>{parseFloat(registro.peso_promedio || 0).toFixed(1)}</td>
+                  <td>
+                    {registro.foto_factura && (
+                      <button
+                        className="btn btn-sm btn-outline"
+                        onClick={() => {
+                          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                          const baseUrl = apiUrl.replace('/api', '');
+                          setImagenSeleccionada(`${baseUrl}${registro.foto_factura}`);
+                          setMostrarModalImagen(true);
+                        }}
+                        title="Ver Factura Gas"
+                      >
+                        📄 Ver Foto
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Modal de Visualización de Imagen */}
+      {mostrarModalImagen && (
+        <div className="modal-overlay" onClick={() => setMostrarModalImagen(false)}>
+          <div className="modal" style={{ maxWidth: '800px', width: '90%' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Factura / Comprobante</h3>
+              <button className="modal-close" onClick={() => setMostrarModalImagen(false)}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-body" style={{ padding: '0', display: 'flex', justifyContent: 'center', backgroundColor: '#f3f4f6' }}>
+              <img
+                src={imagenSeleccionada}
+                alt="Comprobante"
+                style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Crear Registro - Paso a Paso */}
       {mostrarModal && (
@@ -594,7 +635,10 @@ const Registros = () => {
                           type="file"
                           accept="image/*"
                           className="form-control"
-                          onChange={(e) => setArchivos(prev => ({ ...prev, foto_factura: e.target.files[0] }))}
+                          onChange={(e) => {
+                            setArchivos(prev => ({ ...prev, foto_factura: e.target.files[0] }));
+                            if (errorValidacion) setErrorValidacion('');
+                          }}
                         />
                         {archivos.foto_factura && <small className="text-success">Archivo seleccionado: {archivos.foto_factura.name}</small>}
                       </div>
@@ -606,7 +650,10 @@ const Registros = () => {
                           type="file"
                           accept="image/*"
                           className="form-control"
-                          onChange={(e) => setArchivos(prev => ({ ...prev, foto_medidor: e.target.files[0] }))}
+                          onChange={(e) => {
+                            setArchivos(prev => ({ ...prev, foto_medidor: e.target.files[0] }));
+                            if (errorValidacion) setErrorValidacion('');
+                          }}
                         />
                         {archivos.foto_medidor && <small className="text-success">Archivo seleccionado: {archivos.foto_medidor.name}</small>}
                       </div>
