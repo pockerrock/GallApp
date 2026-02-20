@@ -193,12 +193,11 @@ const Gas = () => {
                         <button
                           className="btn btn-sm btn-outline"
                           onClick={() => {
-                            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-                            const baseUrl = apiUrl.replace('/api', '');
+                            // Nginx proxies /uploads automatically so we can just use the absolute path
                             const fotoUrl = consumo.imagen_url;
 
                             // Convertir a URL completa o soportar la de Base64 antigua
-                            const fullUrl = fotoUrl.startsWith('http') || fotoUrl.startsWith('data:') ? fotoUrl : `${baseUrl}${fotoUrl}`;
+                            const fullUrl = fotoUrl.startsWith('http') || fotoUrl.startsWith('data:') ? fotoUrl : fotoUrl;
                             setImagenSeleccionada(fullUrl);
                             setMostrarModalImagen(true);
                           }}
