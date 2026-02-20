@@ -340,6 +340,16 @@ const actualizarRegistro = async (req, res, next) => {
       });
     }
 
+    const files = req.files || {};
+    const nuevasFotos = {};
+
+    if (files.foto_factura) {
+      nuevasFotos.foto_factura = `/uploads/${files.foto_factura[0].filename}`;
+    }
+    if (files.foto_medidor) {
+      nuevasFotos.foto_medidor = `/uploads/${files.foto_medidor[0].filename}`;
+    }
+
     // Actualizar campos
     await registro.update({
       ...(edad_dias && { edad_dias }),
@@ -354,7 +364,8 @@ const actualizarRegistro = async (req, res, next) => {
       ...(acumulado_alimento !== undefined && { acumulado_alimento }),
       ...(temperatura !== undefined && { temperatura }),
       ...(humedad !== undefined && { humedad }),
-      ...(observaciones !== undefined && { observaciones })
+      ...(observaciones !== undefined && { observaciones }),
+      ...nuevasFotos
     });
 
     const registroActualizado = await RegistroDiario.findByPk(id, {

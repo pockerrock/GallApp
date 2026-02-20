@@ -33,6 +33,8 @@ services:
       ALLOWED_ORIGINS: "*"
     depends_on:
       - postgres
+    volumes:
+      - ./backend/public/uploads:/app/public/uploads
     networks:
       - app-network
 

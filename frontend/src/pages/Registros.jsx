@@ -76,7 +76,9 @@ const Registros = () => {
     mortalidad: 0,
     seleccion: 0,
     peso_promedio: '',
-    observaciones: ''
+    observaciones: '',
+    foto_factura: null,
+    foto_medidor: null
   });
 
   // Definir los pasos del formulario
@@ -310,24 +312,31 @@ const Registros = () => {
       mortalidad: registro.mortalidad || 0,
       seleccion: registro.seleccion || 0,
       peso_promedio: registro.peso_promedio || '',
-      observaciones: registro.observaciones || ''
+      observaciones: registro.observaciones || '',
+      foto_factura: null,
+      foto_medidor: null
     });
     setMostrarModalEdicion(true);
   };
 
   const handleChangeEdicion = (e) => {
-    const { name, value } = e.target;
-    setFormularioEdicion(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, files } = e.target;
+    if (type === 'file') {
+      setFormularioEdicion(prev => ({ ...prev, [name]: files[0] }));
+    } else {
+      setFormularioEdicion(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const submitEdicion = async (e) => {
     e.preventDefault();
     setGuardando(true);
     try {
-      // Necesitamos enviar FormData porque el backend puede estar esperándolo debido al middleware upload.fields
       const formData = new FormData();
       Object.keys(formularioEdicion).forEach(key => {
-        formData.append(key, formularioEdicion[key]);
+        if (formularioEdicion[key] !== null) {
+          formData.append(key, formularioEdicion[key]);
+        }
       });
 
       await registrosService.actualizar(registroEditando.id, formData);
@@ -908,7 +917,37 @@ const Registros = () => {
                   />
                 </div>
 
-                <small style={{ color: '#059669', display: 'block' }}>
+                {parseInt(formularioEdicion.edad_dias) === 1 && (
+                  <div className="form-group" style={{ marginTop: '16px' }}>
+                    <label className="form-label">Actualizar Foto Factura Gas</label>
+                    <input
+                      type="file"
+                      name="foto_factura"
+                      accept="image/*"
+                      className="form-control"
+                      onChange={handleChangeEdicion}
+                    />
+                    <small style={{ color: '#6b7280' }}>Si no selecciona ninguna, se conservará la imagen anterior.</small>
+                    {formularioEdicion.foto_factura && <small className="text-success" style={{ display: 'block' }}>Archivo nuevo seleccionado: {formularioEdicion.foto_factura.name}</small>}
+                  </div>
+                )}
+
+                {parseInt(formularioEdicion.edad_dias) === 22 && (
+                  <div className="form-group" style={{ marginTop: '16px' }}>
+                    <label className="form-label">Actualizar Foto Medidor Gas</label>
+                    <input
+                      type="file"
+                      name="foto_medidor"
+                      accept="image/*"
+                      className="form-control"
+                      onChange={handleChangeEdicion}
+                    />
+                    <small style={{ color: '#6b7280' }}>Si no selecciona ninguna, se conservará la imagen anterior.</small>
+                    {formularioEdicion.foto_medidor && <small className="text-success" style={{ display: 'block' }}>Archivo nuevo seleccionado: {formularioEdicion.foto_medidor.name}</small>}
+                  </div>
+                )}
+
+                <small style={{ color: '#059669', display: 'block', marginTop: '16px' }}>
                   Nota: La edición no reversa ni re-aplica el stock en bodega si cambias el consumo, esto es solo para corregir el historial visible.
                 </small>
               </div>
