@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { registrosService, galponesService, inventarioService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { FaPlus, FaTimes, FaFilePdf, FaFileExcel } from 'react-icons/fa';
 
