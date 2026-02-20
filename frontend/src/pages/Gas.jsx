@@ -16,9 +16,14 @@ const Gas = () => {
     edad_dias: '',
     lectura_medidor: '',
     consumo_m3: '',
-    imagen_url: '',
+    consumo_m3: '',
     observaciones: ''
   });
+
+  const [imagenPreview, setImagenPreview] = useState(null);
+  const [imagenFichero, setImagenFichero] = useState(null);
+  const [imagenSeleccionada, setImagenSeleccionada] = useState(null);
+  const [mostrarModalImagen, setMostrarModalImagen] = useState(false);
 
   useEffect(() => {
     cargarDatos();
@@ -51,14 +56,10 @@ const Gas = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // En producción, aquí subirías la imagen a un servidor
-      // Por ahora, solo guardamos el nombre del archivo
+      setImagenFichero(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormulario(prev => ({
-          ...prev,
-          imagen_url: reader.result // En producción sería la URL del servidor
-        }));
+        setImagenPreview(reader.result);
       };
       reader.readAsDataURL(file);
     }
@@ -71,9 +72,10 @@ const Gas = () => {
       edad_dias: '',
       lectura_medidor: '',
       consumo_m3: '',
-      imagen_url: '',
       observaciones: ''
     });
+    setImagenPreview(null);
+    setImagenFichero(null);
     setMostrarModal(true);
   };
 
@@ -87,13 +89,25 @@ const Gas = () => {
 
     // Validar imagen en día 1 y día 22
     const edad = parseInt(formulario.edad_dias);
-    if ((edad === 1 || edad === 22) && !formulario.imagen_url) {
+    if ((edad === 1 || edad === 22) && !imagenFichero) {
       toast.error(`Se requiere imagen del medidor en el día ${edad}`);
       return;
     }
 
     try {
-      await gasService.crear(formulario);
+      const formData = new FormData();
+      formData.append('galpon_id', formulario.galpon_id);
+      formData.append('fecha', formulario.fecha);
+      formData.append('edad_dias', formulario.edad_dias);
+      if (formulario.lectura_medidor) formData.append('lectura_medidor', formulario.lectura_medidor);
+      if (formulario.consumo_m3) formData.append('consumo_m3', formulario.consumo_m3);
+      if (formulario.observaciones) formData.append('observaciones', formulario.observaciones);
+
+      if (imagenFichero) {
+        formData.append('imagen', imagenFichero);
+      }
+
+      await gasService.crear(formData);
       toast.success('Registro de consumo creado exitosamente');
       setMostrarModal(false);
       cargarDatos();
@@ -181,8 +195,12 @@ const Gas = () => {
                           onClick={() => {
                             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
                             const baseUrl = apiUrl.replace('/api', '');
-                            const fotoUrl = `${baseUrl}${consumo.imagen_url}`;
-                            window.open(fotoUrl, '_blank', 'noopener,noreferrer');
+                            const fotoUrl = consumo.imagen_url;
+
+                            // Convertir a URL completa o soportar la de Base64 antigua
+                            const fullUrl = fotoUrl.startsWith('http') || fotoUrl.startsWith('data:') ? fotoUrl : `${baseUrl}${fotoUrl}`;
+                            setImagenSeleccionada(fullUrl);
+                            setMostrarModalImagen(true);
                           }}
                           title="Ver Medidor Gas"
                         >
@@ -305,9 +323,9 @@ const Gas = () => {
                     accept="image/*"
                     onChange={handleImageChange}
                   />
-                  {formulario.imagen_url && (
+                  {imagenPreview && (
                     <img
-                      src={formulario.imagen_url}
+                      src={imagenPreview}
                       alt="Vista previa"
                       style={{ maxWidth: '100%', marginTop: '8px', borderRadius: '4px' }}
                     />
@@ -339,6 +357,27 @@ const Gas = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Visualización de Imagen */}
+      {mostrarModalImagen && (
+        <div className="modal-overlay" onClick={() => setMostrarModalImagen(false)}>
+          <div className="modal" style={{ maxWidth: '800px', width: '90%' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Medidor Gas</h3>
+              <button className="modal-close" onClick={() => setMostrarModalImagen(false)}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-body" style={{ padding: '0', display: 'flex', justifyContent: 'center', backgroundColor: '#f3f4f6' }}>
+              <img
+                src={imagenSeleccionada}
+                alt="Medidor"
+                style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }}
+              />
+            </div>
           </div>
         </div>
       )}

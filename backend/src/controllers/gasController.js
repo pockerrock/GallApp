@@ -73,9 +73,15 @@ const crearConsumo = async (req, res, next) => {
       edad_dias,
       lectura_medidor,
       consumo_m3,
-      imagen_url,
       observaciones
     } = req.body;
+
+    let imagen_url = null;
+    if (req.file) {
+      imagen_url = `/uploads/${req.file.filename}`;
+    } else if (req.body.imagen_url) {
+      imagen_url = req.body.imagen_url;
+    }
 
     if (!galpon_id || !fecha || edad_dias === undefined) {
       return res.status(400).json({
@@ -132,7 +138,14 @@ const crearConsumo = async (req, res, next) => {
 const actualizarConsumo = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { lectura_medidor, consumo_m3, imagen_url, observaciones } = req.body;
+    const { lectura_medidor, consumo_m3, observaciones } = req.body;
+    let imagen_url;
+
+    if (req.file) {
+      imagen_url = `/uploads/${req.file.filename}`;
+    } else if (req.body.imagen_url !== undefined) {
+      imagen_url = req.body.imagen_url;
+    }
 
     const consumo = await ConsumoGas.findByPk(id);
 
