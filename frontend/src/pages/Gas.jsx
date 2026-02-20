@@ -167,9 +167,8 @@ const Gas = () => {
                     <td>{new Date(consumo.fecha).toLocaleDateString('es-ES')}</td>
                     <td>Galpón {consumo.galpon?.numero}</td>
                     <td>
-                      <span className={`badge ${
-                        consumo.edad_dias === 1 || consumo.edad_dias === 22 ? 'badge-warning' : 'badge-info'
-                      }`}>
+                      <span className={`badge ${consumo.edad_dias === 1 || consumo.edad_dias === 22 ? 'badge-warning' : 'badge-info'
+                        }`}>
                         {consumo.edad_dias} días
                       </span>
                     </td>
@@ -177,9 +176,18 @@ const Gas = () => {
                     <td>{consumo.consumo_m3 || '-'}</td>
                     <td>
                       {consumo.imagen_url ? (
-                        <a href={consumo.imagen_url} target="_blank" rel="noopener noreferrer">
-                          <FaImage style={{ color: '#3b82f6', fontSize: '20px' }} />
-                        </a>
+                        <button
+                          className="btn btn-sm btn-outline"
+                          onClick={() => {
+                            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                            const baseUrl = apiUrl.replace('/api', '');
+                            const fotoUrl = `${baseUrl}${consumo.imagen_url}`;
+                            window.open(fotoUrl, '_blank', 'noopener,noreferrer');
+                          }}
+                          title="Ver Medidor Gas"
+                        >
+                          📄 Ver Foto
+                        </button>
                       ) : (
                         '-'
                       )}

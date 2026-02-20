@@ -506,7 +506,10 @@ const Registros = () => {
                           const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
                           const baseUrl = apiUrl.replace('/api', '');
                           const fotoUrl = registro.foto_factura || registro.foto_medidor;
-                          setImagenSeleccionada(`${baseUrl}${fotoUrl}`);
+
+                          // Convertir a URL completa
+                          const fullUrl = fotoUrl.startsWith('http') ? fotoUrl : `${baseUrl}${fotoUrl}`;
+                          setImagenSeleccionada(fullUrl);
                           setMostrarModalImagen(true);
                         }}
                         title={registro.foto_factura ? "Ver Factura Gas" : "Ver Medidor Gas"}
