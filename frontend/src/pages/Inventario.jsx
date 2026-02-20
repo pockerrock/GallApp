@@ -27,7 +27,7 @@ const Inventario = () => {
 
   // Formulario Lote
   const [formularioLote, setFormularioLote] = useState({
-    tipo: 'iniciador',
+    tipo: 'Preiniciador',
     codigo_lote: '',
     cantidad_kg: '',
     proveedor: '',
@@ -38,6 +38,9 @@ const Inventario = () => {
 
   // Estado para bodegas
   const [bodegas, setBodegas] = useState([]);
+
+  // Ordenamiento de tabla
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   // Formulario Movimiento
   const [formularioMovimiento, setFormularioMovimiento] = useState({
@@ -62,7 +65,9 @@ const Inventario = () => {
   const cargarBodegas = async () => {
     try {
       const res = await bodegasService.listar();
-      setBodegas(res.data.bodegas || []);
+      const bodegasData = res.data.bodegas || [];
+      bodegasData.sort((a, b) => a.nombre.localeCompare(b.nombre, undefined, { numeric: true, sensitivity: 'base' }));
+      setBodegas(bodegasData);
     } catch (error) {
       console.error('Error al cargar bodegas:', error);
     }
@@ -86,6 +91,49 @@ const Inventario = () => {
     } catch (error) {
       console.error('Error al cargar lotes:', error);
     }
+  };
+
+  const lotesUnicos = React.useMemo(() => {
+    const unicos = {};
+    lotes.forEach(l => {
+      if (!unicos[l.id]) {
+        unicos[l.id] = { ...l, cantidad_total: 0 };
+      }
+      unicos[l.id].cantidad_total += parseFloat(l.cantidad_actual || 0);
+    });
+    return Object.values(unicos);
+  }, [lotes]);
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortedLotes = (itemLotes) => {
+    if (!sortConfig.key) return itemLotes;
+    return [...itemLotes].sort((a, b) => {
+      let aVal = a[sortConfig.key];
+      let bVal = b[sortConfig.key];
+
+      if (sortConfig.key === 'bodegaNombre') {
+        aVal = a.bodega ? a.bodega.nombre : '';
+        bVal = b.bodega ? b.bodega.nombre : '';
+      }
+
+      if (typeof aVal === 'string') {
+        const res = aVal.localeCompare(bVal, undefined, { numeric: true });
+        return sortConfig.direction === 'asc' ? res : -res;
+      }
+
+      aVal = parseFloat(aVal) || 0;
+      bVal = parseFloat(bVal) || 0;
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
   };
 
   // Verificar si el usuario puede gestionar inventario (supervisor o dueño)
@@ -129,6 +177,13 @@ const Inventario = () => {
       distribuciones.splice(index, 1);
       return { ...prev, distribuciones };
     });
+  };
+
+  const distribuirEnTodas = () => {
+    setFormularioLote(prev => ({
+      ...prev,
+      distribuciones: bodegas.map(b => ({ bodega_id: b.id.toString(), cantidad: '' }))
+    }));
   };
 
   const handleSubmitLote = async (e) => {
@@ -180,7 +235,7 @@ const Inventario = () => {
 
       // Resetear formulario
       setFormularioLote({
-        tipo: 'iniciador',
+        tipo: 'Preiniciador',
         codigo_lote: '',
         cantidad_kg: '',
         proveedor: '',
@@ -452,15 +507,15 @@ const Inventario = () => {
                 <table className="table" style={{ marginTop: '16px' }}>
                   <thead>
                     <tr>
-                      <th>Código Lote</th>
-                      <th>Bodega</th>
-                      <th>Disponible</th>
-                      <th>%</th>
+                      <th onClick={() => requestSort('codigo_lote')} style={{ cursor: 'pointer' }}>Código Lote {sortConfig.key === 'codigo_lote' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
+                      <th onClick={() => requestSort('bodegaNombre')} style={{ cursor: 'pointer' }}>Bodega {sortConfig.key === 'bodegaNombre' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
+                      <th onClick={() => requestSort('cantidad_actual')} style={{ cursor: 'pointer' }}>Disponible {sortConfig.key === 'cantidad_actual' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
+                      <th onClick={() => requestSort('porcentaje_disponible')} style={{ cursor: 'pointer' }}>% {sortConfig.key === 'porcentaje_disponible' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {item.lotes.map((lote) => (
-                      <tr key={lote.id}>
+                    {getSortedLotes(item.lotes).map((lote) => (
+                      <tr key={lote.id + '-' + (lote.bodega_id || 'none')}>
                         <td><strong>{lote.codigo_lote}</strong></td>
                         <td>
                           {lote.bodega ? (
@@ -583,9 +638,12 @@ const Inventario = () => {
                     onChange={handleChangeLote}
                     required
                   >
-                    <option value="iniciador">Iniciador</option>
-                    <option value="crecimiento">Crecimiento</option>
-                    <option value="engorde">Engorde</option>
+                    <option value="Preiniciador">Preiniciador</option>
+                    <option value="Pollito">Pollito</option>
+                    <option value="Engorde">Engorde</option>
+                    <option value="Finalizador">Finalizador</option>
+                    <option value="Engorde Campesino">Engorde Campesino</option>
+                    <option value="Finalizador Campesino">Finalizador Campesino</option>
                   </select>
                 </div>
 
@@ -707,14 +765,23 @@ const Inventario = () => {
                       </button>
                     </div>
                   ))}
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline"
-                    onClick={agregarDistribucion}
-                  >
-                    <FaPlus style={{ marginRight: '4px' }} />
-                    Agregar bodega
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={agregarDistribucion}
+                    >
+                      <FaPlus style={{ marginRight: '4px' }} />
+                      Agregar bodega
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={distribuirEnTodas}
+                    >
+                      Distribución en todas
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -763,9 +830,9 @@ const Inventario = () => {
                     required
                   >
                     <option value="">Seleccione un lote</option>
-                    {lotes.map(lote => (
+                    {lotesUnicos.map(lote => (
                       <option key={lote.id} value={lote.id}>
-                        {lote.codigo_lote} - {lote.tipo} ({parseFloat(lote.cantidad_actual).toFixed(2)} kg disponibles)
+                        {lote.codigo_lote} - {lote.tipo} ({parseFloat(lote.cantidad_total).toFixed(2)} kg disponibles)
                       </option>
                     ))}
                   </select>

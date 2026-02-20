@@ -50,8 +50,11 @@ const Registros = () => {
         galponesService.listar(),
         inventarioService.lotes()
       ]);
+      const galponesData = galponesRes.data.galpones || [];
+      galponesData.sort((a, b) => a.numero - b.numero);
+
       setRegistros(registrosRes.data.registros);
-      setGalpones(galponesRes.data.galpones);
+      setGalpones(galponesData);
       setLotes(lotesRes.data.lotes || []);
     } catch (error) {
       toast.error('Error al cargar registros');
@@ -60,13 +63,28 @@ const Registros = () => {
     }
   };
 
+  const { usuario } = useAuth(); // Import useAuth to detect admin
+  const puedeEditar = () => ['admin', 'dueno'].includes(usuario?.rol);
+
+  const [registroEditando, setRegistroEditando] = useState(null);
+  const [mostrarModalEdicion, setMostrarModalEdicion] = useState(false);
+  const [formularioEdicion, setFormularioEdicion] = useState({
+    edad_dias: '',
+    consumo_kg: '',
+    cantidad_bultos: 0,
+    mortalidad: 0,
+    seleccion: 0,
+    peso_promedio: '',
+    observaciones: ''
+  });
+
   // Definir los pasos del formulario
   const pasos = [
     { nombre: 'galpon_id', label: 'Seleccione el Galpón', tipo: 'select', requerido: true },
     { nombre: 'fecha', label: 'Ingrese la Fecha', tipo: 'date', requerido: true },
     { nombre: 'edad_dias', label: 'Ingrese la Edad en Días', tipo: 'number', min: 0, requerido: true },
     { nombre: 'consumo_kg', label: 'Ingrese el Consumo de Alimento (kg)', tipo: 'number', min: 0, step: 0.01, requerido: true },
-    { nombre: 'lote_id', label: 'Seleccione Lote de Bodega (opcional)', tipo: 'select', requerido: false },
+    { nombre: 'lote_id', label: 'Seleccione Lote de Bodega', tipo: 'select', requerido: true },
     { nombre: 'tipo_alimento', label: 'Tipo de Alimento', tipo: 'text', requerido: false },
     { nombre: 'lote_alimento', label: 'Lote de Alimento', tipo: 'text', requerido: false },
     { nombre: 'cantidad_bultos', label: 'Cantidad de Bultos', tipo: 'number', min: 0, requerido: false },
@@ -269,8 +287,55 @@ const Registros = () => {
       // Recargar registros
       cargarDatos();
     } catch (error) {
-      console.error('Error al crear registro:', error);
-      toast.error(error.response?.data?.error || 'Error al crear registro');
+      console.error('Error al crear/actualizar registro:', error);
+      toast.error(error.response?.data?.error || 'Error al guardar registro');
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const formatearFechaLocal = (fechaISO) => {
+    if (!fechaISO) return '-';
+    const [año, mes, dia] = fechaISO.split('T')[0].split('-');
+    return `${dia}/${mes}/${año}`;
+  };
+
+  const abrirEditar = (registro) => {
+    setRegistroEditando(registro);
+    setFormularioEdicion({
+      edad_dias: registro.edad_dias || '',
+      consumo_kg: registro.consumo_kg || '',
+      cantidad_bultos: registro.cantidad_bultos || 0,
+      mortalidad: registro.mortalidad || 0,
+      seleccion: registro.seleccion || 0,
+      peso_promedio: registro.peso_promedio || '',
+      observaciones: registro.observaciones || ''
+    });
+    setMostrarModalEdicion(true);
+  };
+
+  const handleChangeEdicion = (e) => {
+    const { name, value } = e.target;
+    setFormularioEdicion(prev => ({ ...prev, [name]: value }));
+  };
+
+  const submitEdicion = async (e) => {
+    e.preventDefault();
+    setGuardando(true);
+    try {
+      // Necesitamos enviar FormData porque el backend puede estar esperándolo debido al middleware upload.fields
+      const formData = new FormData();
+      Object.keys(formularioEdicion).forEach(key => {
+        formData.append(key, formularioEdicion[key]);
+      });
+
+      await registrosService.actualizar(registroEditando.id, formData);
+      toast.success('Registro actualizado exitosamente');
+      setMostrarModalEdicion(false);
+      cargarDatos();
+    } catch (error) {
+      console.error('Error al actualizar registro:', error);
+      toast.error('Error al actualizar el registro');
     } finally {
       setGuardando(false);
     }
@@ -416,7 +481,7 @@ const Registros = () => {
             ) : (
               registrosFiltrados.map((registro) => (
                 <tr key={registro.id}>
-                  <td>{new Date(registro.fecha).toLocaleDateString('es-ES')}</td>
+                  <td>{formatearFechaLocal(registro.fecha)}</td>
                   <td>Galpón {registro.galpon?.numero}</td>
                   <td>{registro.edad_dias}</td>
                   <td>{parseFloat(registro.consumo_kg).toFixed(2)}</td>
@@ -433,18 +498,30 @@ const Registros = () => {
                   <td>{registro.saldo_aves?.toLocaleString('es-ES') || 0}</td>
                   <td>{parseFloat(registro.peso_promedio || 0).toFixed(1)}</td>
                   <td>
-                    {registro.foto_factura && (
+                    {registro.foto_factura || registro.foto_medidor ? (
                       <button
                         className="btn btn-sm btn-outline"
                         onClick={() => {
                           const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
                           const baseUrl = apiUrl.replace('/api', '');
-                          setImagenSeleccionada(`${baseUrl}${registro.foto_factura}`);
+                          const fotoUrl = registro.foto_factura || registro.foto_medidor;
+                          setImagenSeleccionada(`${baseUrl}${fotoUrl}`);
                           setMostrarModalImagen(true);
                         }}
-                        title="Ver Factura Gas"
+                        title={registro.foto_factura ? "Ver Factura Gas" : "Ver Medidor Gas"}
                       >
                         📄 Ver Foto
+                      </button>
+                    ) : null}
+
+                    {puedeEditar() && (
+                      <button
+                        className="btn btn-sm btn-outline"
+                        style={{ marginLeft: '4px' }}
+                        onClick={() => abrirEditar(registro)}
+                        title="Editar Registro"
+                      >
+                        ✏️
                       </button>
                     )}
                   </td>
@@ -541,29 +618,42 @@ const Registros = () => {
                   </select>
                 )}
 
-                {pasos[pasoActual].tipo === 'select' && pasos[pasoActual].nombre === 'lote_id' && (
-                  <>
-                    <select
-                      className="form-control"
-                      value={valorTemporal}
-                      onChange={(e) => setValorTemporal(e.target.value)}
-                      style={{ fontSize: '16px', padding: '12px' }}
-                      autoFocus
-                    >
-                      <option value="">Ninguno (omitir)</option>
-                      {lotes
-                        .filter(l => l.cantidad_actual > 0)
-                        .map(l => (
+                {pasos[pasoActual].tipo === 'select' && pasos[pasoActual].nombre === 'lote_id' && (() => {
+                  const galponSeleccionado = galpones.find(g => g.id === parseInt(formulario.galpon_id));
+                  const lotesFiltrados = lotes.filter(l =>
+                    l.cantidad_actual > 0 &&
+                    (!galponSeleccionado || l.bodega_id === galponSeleccionado.bodega_id)
+                  );
+
+                  // Agrupar los lotes filtrados para que no salgan duplicados
+                  const unicos = {};
+                  lotesFiltrados.forEach(l => {
+                    if (!unicos[l.id]) {
+                      unicos[l.id] = { ...l, cantidad_total: 0 };
+                    }
+                    unicos[l.id].cantidad_total += parseFloat(l.cantidad_actual || 0);
+                  });
+                  const lotesUnicos = Object.values(unicos);
+
+                  return (
+                    <>
+                      <select
+                        className="form-control"
+                        value={valorTemporal}
+                        onChange={(e) => setValorTemporal(e.target.value)}
+                        style={{ fontSize: '16px', padding: '12px' }}
+                        autoFocus
+                      >
+                        <option value="">Seleccione el lote</option>
+                        {lotesUnicos.map(l => (
                           <option key={l.id} value={l.id}>
-                            {l.tipo} - Lote {l.codigo_lote} ({l.cantidad_actual} kg disponibles)
+                            {l.tipo} - Lote {l.codigo_lote} ({parseFloat(l.cantidad_total).toFixed(2)} kg disponibles)
                           </option>
                         ))}
-                    </select>
-                    <small style={{ display: 'block', marginTop: '8px', color: '#6b7280', fontSize: '13px' }}>
-                      Presione "Siguiente" para omitir este campo
-                    </small>
-                  </>
-                )}
+                      </select>
+                    </>
+                  );
+                })()}
 
                 {pasos[pasoActual].tipo === 'date' && (
                   <input
@@ -714,6 +804,128 @@ const Registros = () => {
                 {guardando ? 'Guardando...' : pasoActual === pasos.length - 1 ? 'Finalizar' : 'Siguiente'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Editar Registro */}
+      {mostrarModalEdicion && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">Editar Registro (Día {registroEditando?.edad_dias})</h3>
+              <button className="modal-close" onClick={() => setMostrarModalEdicion(false)}>
+                <FaTimes />
+              </button>
+            </div>
+            <form onSubmit={submitEdicion}>
+              <div className="modal-body">
+                <div className="flex gap-2" style={{ marginBottom: '16px' }}>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Edad (días)</label>
+                    <input
+                      type="number"
+                      name="edad_dias"
+                      className="form-control"
+                      value={formularioEdicion.edad_dias}
+                      onChange={handleChangeEdicion}
+                      required
+                    />
+                  </div>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Consumo (kg)</label>
+                    <input
+                      type="number"
+                      name="consumo_kg"
+                      className="form-control"
+                      value={formularioEdicion.consumo_kg}
+                      onChange={handleChangeEdicion}
+                      step="0.01"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2" style={{ marginBottom: '16px' }}>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Mortalidad</label>
+                    <input
+                      type="number"
+                      name="mortalidad"
+                      className="form-control"
+                      value={formularioEdicion.mortalidad}
+                      onChange={handleChangeEdicion}
+                    />
+                  </div>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Selección/Descarte</label>
+                    <input
+                      type="number"
+                      name="seleccion"
+                      className="form-control"
+                      value={formularioEdicion.seleccion}
+                      onChange={handleChangeEdicion}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2" style={{ marginBottom: '16px' }}>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Peso Promedio (g)</label>
+                    <input
+                      type="number"
+                      name="peso_promedio"
+                      className="form-control"
+                      value={formularioEdicion.peso_promedio}
+                      onChange={handleChangeEdicion}
+                      step="0.1"
+                    />
+                  </div>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Cantidad Bultos</label>
+                    <input
+                      type="number"
+                      name="cantidad_bultos"
+                      className="form-control"
+                      value={formularioEdicion.cantidad_bultos}
+                      onChange={handleChangeEdicion}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Observaciones</label>
+                  <textarea
+                    name="observaciones"
+                    className="form-control"
+                    value={formularioEdicion.observaciones}
+                    onChange={handleChangeEdicion}
+                    rows="3"
+                  />
+                </div>
+
+                <small style={{ color: '#059669', display: 'block' }}>
+                  Nota: La edición no reversa ni re-aplica el stock en bodega si cambias el consumo, esto es solo para corregir el historial visible.
+                </small>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setMostrarModalEdicion(false)}
+                  disabled={guardando}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={guardando}
+                >
+                  {guardando ? 'Guardando...' : 'Actualizar'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
